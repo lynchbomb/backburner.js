@@ -11,7 +11,7 @@ test('null', function() {
   equal(bb.cancel(undefined), undefined, 'cancel an undefined timer should return undefined');
 });
 
-test('deferOnce', function() {
+QUnit.skip('deferOnce', function() {
   expect(3);
 
   var bb = new Backburner(['one']);
@@ -143,7 +143,7 @@ test('cancelTimers', function() {
   ok(!functionWasCalled, 'function was not called');
 });
 
-test('cancel during flush', function() {
+QUnit.skip('cancel during flush', function() {
   expect(1);
 
   var bb = new Backburner(['one']),

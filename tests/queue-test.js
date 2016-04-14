@@ -56,7 +56,7 @@ test('Queue#flush should be recursive if new items are added', function() {
 
 test('Default queue is automatically set to first queue if none is provided', function() {
   var bb = new Backburner(['one', 'two']);
-  equal(bb.options.defaultQueue, 'one');
+  equal(bb.env.defaultQueue, 'one');
 });
 
 test('Default queue can be manually configured', function() {
@@ -64,7 +64,7 @@ test('Default queue can be manually configured', function() {
     defaultQueue: 'two'
   });
 
-  equal(bb.options.defaultQueue, 'two');
+  equal(bb.env.defaultQueue, 'two');
 });
 
 test('onBegin and onEnd are called and passed the correct parameters', function() {

@@ -16,7 +16,7 @@ test('We can configure a custom platform', function() {
     _platform: fakePlatform
   });
 
-  ok(bb.options._platform.isFakePlatform, 'We can pass in a custom platform');
+  ok(bb.env.platform.isFakePlatform, 'We can pass in a custom platform');
 });
 
 test('We can use a custom setTimeout', function() {
@@ -39,7 +39,7 @@ test('We can use a custom setTimeout', function() {
   stop();
   bb.deferOnce('one', function() {
     start();
-    ok(bb.options._platform.isFakePlatform, 'we are using the fake platform');
+    ok(bb.env.platform.isFakePlatform, 'we are using the fake platform');
     ok(customTimeoutWasUsed , 'custom setTimeout was used');
   });
 });

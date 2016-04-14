@@ -1,4 +1,5 @@
 import Queue from '../lib/backburner/queue';
+import Environment from '../lib/backburner/environment';
 
 module('Queue.prototpye.pushUnique');
 var slice = [].slice;
@@ -81,7 +82,7 @@ test('pushUnique: 1 target, 1 different methods called twice', function() {
 });
 
 test('pushUnique: 2 different targets (GUID_KEY)', function() {
-  var queue = new Queue('foo', {}, { GUID_KEY: 'GUID_KEY' });
+  var queue = new Queue('foo', {}, Environment.forOptions({ GUID_KEY: 'GUID_KEY' }));
   var target1fooWasCalled = [];
   var target2fooWasCalled = [];
   var target1 = {
@@ -113,7 +114,7 @@ test('pushUnique: 2 different targets (GUID_KEY)', function() {
 });
 
 test('pushUnique: 1 target, 2 different methods (GUID_KEY)', function() {
-  var queue = new Queue('foo', {}, { GUID_KEY: 'GUID_KEY' });
+  var queue = new Queue('foo', {}, Environment.forOptions({ GUID_KEY: 'GUID_KEY' }));
   var target1fooWasCalled = [];
   var target1barWasCalled = [];
   var target1 = {
@@ -141,7 +142,7 @@ test('pushUnique: 1 target, 2 different methods (GUID_KEY)', function() {
 });
 
 test('pushUnique: 1 target, 1 diffe`rent methods called twice (GUID_KEY)', function() {
-  var queue = new Queue('foo', {}, { GUID_KEY: 'GUID_KEY' });
+  var queue = new Queue('foo', {}, Environment.forOptions({ GUID_KEY: 'GUID_KEY' }));
   var target1fooWasCalled = [];
   var target1 = {
     GUID_KEY: 'target1',
@@ -162,7 +163,7 @@ test('pushUnique: 1 target, 1 diffe`rent methods called twice (GUID_KEY)', funct
 });
 
 test('pushUnique: 1 target, 2 different methods, second one called twice (GUID_KEY)', function() {
-  var queue = new Queue('foo', {}, { GUID_KEY: 'GUID_KEY' });
+  var queue = new Queue('foo', {}, Environment.forOptions({ GUID_KEY: 'GUID_KEY' }));
   var target1barWasCalled = [];
   var target1 = {
     GUID_KEY: 'target1',

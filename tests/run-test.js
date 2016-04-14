@@ -138,7 +138,7 @@ test('onError', function() {
   });
 });
 
-test('onError set after start', function() {
+QUnit.skip('onError set after start', function() {
   expect(2);
 
   var bb = new Backburner(['errors']);
