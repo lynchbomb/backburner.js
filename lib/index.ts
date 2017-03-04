@@ -6,50 +6,106 @@ import {
   isCoercableNumber,
   now
 } from './backburner/utils';
-
 import searchTimer from './backburner/binary-search';
 import DeferredActionQueues from './backburner/deferred-action-queues';
 
+/* QUEUE
+=============================================*/	
 export { default as Queue } from './backburner/queue';
 
-export default function Backburner(queueNames, options) {
-  this.queueNames = queueNames;
-  this.options = options || {};
-  if (!this.options.defaultQueue) {
-    this.options.defaultQueue = queueNames[0];
-  }
-  this.instanceStack = [];
-  this._debouncees = [];
-  this._throttlers = [];
-  this._eventCallbacks = {
-    end: [],
-    begin: []
-  };
 
-  var _this = this;
-  this._boundClearItems = function() {
-    clearItems.apply(_this, arguments);
-  };
 
-  this._timerTimeoutId = undefined;
-  this._timers = [];
-
-  this._platform = this.options._platform || {
-    setTimeout: function (fn, ms) {
-      return setTimeout(fn, ms);
-    },
-    clearTimeout: function (id) {
-      clearTimeout(id);
-    }
-  };
-
-  this._boundRunExpiredTimers = function () {
-    _this._runExpiredTimers();
-  };
+/* INTERFACES - BACKBURNER OPTIONS
+=============================================*/	
+interface IBackburnerOptions {
+  defaultQueue?: string;
+  onErrorTarget?: any;
+  onErrorMethod?: string;
+  _platform?: any;
+  onBegin?(currentInstance: IBackburner, previousInstance: IBackburner): void;
+  onEnd?(currentInstance: IBackburner, previousInstance: IBackburner): void;
+  onError?(error: Error, stack: string): void;
 }
 
-Backburner.prototype = {
-  begin: function() {
+interface IBackburner {
+  begin(): void;
+  cancel(timer: any): void;
+  debounce(target: any, method: string | Function, ...args: any[]): void;
+  end(): void;
+  flush(): void;
+  join(target: any, method: string | Function, ...args: any[]): any;
+  later(target: any, method: string | Function, ...args: any[]): string;
+  next(target: any, method: string | Function, ...args: any[]): number;
+  off(eventName: string, callback: Function): void;
+  on(eventName: string, callback: Function): void;
+  once(target: any, method: string | Function, ...args: any[]): number;
+  schedule(queue: string, target: any, method: string | Function, ...args: any[]): void;
+  scheduleOnce(queue: string, target: any, method: string | Function, ...args: any[]): void;
+  throttle(target: any, method: string | Function, ...args: any[]): void;
+}
+
+
+
+/* BACKBURNER CLASS
+=============================================*/	
+export default class Backburner {
+  options: IBackburnerOptions;
+  schedule: any;
+  DEBUG: any;
+  currentInstance: any;
+  instanceStack: any[];
+  queueNames: string[];
+  _autorun: any;
+  _platform: any;
+  _timers: any[];
+  _timerTimeoutId: any;
+  _eventCallbacks: { end: any[]; begin: any[]; };
+  _throttlers: any[];
+  _debouncees: any[];
+  _boundClearItems: () => void;
+  _boundRunExpiredTimers: () => void;
+
+
+  constructor(queueNames: string[], options: IBackburnerOptions = {}) {
+    this.queueNames = queueNames;
+    this.options = options;
+    if (!this.options.defaultQueue) {
+      this.options.defaultQueue = queueNames[0];
+    }
+    this.instanceStack = [];
+    this._debouncees = [];
+    this._throttlers = [];
+    this._eventCallbacks = {
+      end: [],
+      begin: []
+    };
+
+    var _this = this;
+
+    this._boundClearItems = function() {
+      clearItems.apply(_this, arguments);
+    };
+
+    this._timerTimeoutId = undefined;
+
+    this._timers = [];
+
+    this._platform = this.options._platform || {
+      setTimeout: function (fn, ms) {
+        return setTimeout(fn, ms);
+      },
+      clearTimeout: function (id) {
+        clearTimeout(id);
+      }
+    };
+
+    this._boundRunExpiredTimers = function () {
+      _this._runExpiredTimers();
+    };
+  }
+
+
+  begin() {
     var options = this.options;
     var onBegin = options && options.onBegin;
     var previousInstance = this.currentInstance;
@@ -63,9 +119,10 @@ Backburner.prototype = {
     if (onBegin) {
       onBegin(this.currentInstance, previousInstance);
     }
-  },
+  }
 
-  end: function() {
+
+  end() {
     var options = this.options;
     var onEnd = options && options.onEnd;
     var currentInstance = this.currentInstance;
@@ -92,30 +149,9 @@ Backburner.prototype = {
         }
       }
     }
-  },
+  }
 
-  /**
-   Trigger an event. Supports up to two arguments. Designed around
-   triggering transition events from one run loop instance to the
-   next, which requires an argument for the first instance and then
-   an argument for the next instance.
-
-   @private
-   @method _trigger
-   @param {String} eventName
-   @param {any} arg1
-   @param {any} arg2
-   */
-  _trigger: function(eventName, arg1, arg2) {
-    var callbacks = this._eventCallbacks[eventName];
-    if (callbacks) {
-      for (var i = 0; i < callbacks.length; i++) {
-        callbacks[i](arg1, arg2);
-      }
-    }
-  },
-
-  on: function(eventName, callback) {
+  on(eventName, callback) {
     if (typeof callback !== 'function') {
       throw new TypeError('Callback must be a function');
     }
@@ -125,9 +161,10 @@ Backburner.prototype = {
     } else {
       throw new TypeError('Cannot on() event "' + eventName + '" because it does not exist');
     }
-  },
+  }
 
-  off: function(eventName, callback) {
+
+  off(eventName, callback) {
     if (eventName) {
       var callbacks = this._eventCallbacks[eventName];
       var callbackFound = false;
@@ -147,9 +184,10 @@ Backburner.prototype = {
     } else {
       throw new TypeError('Cannot off() event "' + eventName + '" because it does not exist');
     }
-  },
+  }
 
-  run: function(/* target, method, args */) {
+
+  run() {
     var length = arguments.length;
     var method, target, args;
 
@@ -202,7 +240,7 @@ Backburner.prototype = {
         }
       }
     }
-  },
+  }
 
   /*
     Join the passed method with an existing queue and execute immediately,
@@ -218,7 +256,7 @@ Backburner.prototype = {
     @param {any} args The method arguments
     @return method result
   */
-  join: function(/* target, method, args */) {
+  join() {
     if (!this.currentInstance) {
       return this.run.apply(this, arguments);
     }
@@ -249,8 +287,7 @@ Backburner.prototype = {
       }
       return method.apply(target, args);
     }
-  },
-
+  }
 
   /*
     Defer the passed function to run inside the specified queue.
@@ -261,8 +298,8 @@ Backburner.prototype = {
     @param {Function|String} method The method or method name to be executed
     @param {any} args The method arguments
     @return method result
-  */
-  defer: function(queueName /* , target, method, args */) {
+ */
+  defer(queueName) {
     var length = arguments.length;
     var method, target, args;
 
@@ -291,9 +328,10 @@ Backburner.prototype = {
 
     if (!this.currentInstance) { createAutorun(this); }
     return this.currentInstance.schedule(queueName, target, method, args, false, stack);
-  },
+  }
 
-  deferOnce: function(queueName /* , target, method, args */) {
+
+  deferOnce(queueName) {
     var length = arguments.length;
     var method, target, args;
 
@@ -324,9 +362,10 @@ Backburner.prototype = {
       createAutorun(this);
     }
     return this.currentInstance.schedule(queueName, target, method, args, true, stack);
-  },
+  }
 
-  setTimeout: function() {
+
+  setTimeout() {
     var l = arguments.length;
     var args = new Array(l);
 
@@ -401,29 +440,10 @@ Backburner.prototype = {
     }
 
     return this._setTimeout(fn, executeAt);
-  },
+  }
 
-  _setTimeout: function (fn, executeAt) {
-    if (this._timers.length === 0) {
-      this._timers.push(executeAt, fn);
-      this._installTimerTimeout();
-      return fn;
-    }
 
-    // find position to insert
-    var i = searchTimer(executeAt, this._timers);
-
-    this._timers.splice(i, 0, executeAt, fn);
-
-    // we should be the new earliest timer if i == 0
-    if (i === 0) {
-      this._reinstallTimerTimeout();
-    }
-
-    return fn;
-  },
-
-  throttle: function(target, method /* , args, wait, [immediate] */) {
+  throttle(target, method) {
     var backburner = this;
     var args = new Array(arguments.length);
     for (var i = 0; i < arguments.length; i++) {
@@ -463,9 +483,10 @@ Backburner.prototype = {
     this._throttlers.push(throttler);
 
     return throttler;
-  },
+  }
 
-  debounce: function(target, method /* , args, wait, [immediate] */) {
+
+  debounce(target, method) {
     var backburner = this;
     var args = new Array(arguments.length);
     for (var i = 0; i < arguments.length; i++) {
@@ -515,9 +536,10 @@ Backburner.prototype = {
     backburner._debouncees.push(debouncee);
 
     return debouncee;
-  },
+  }
 
-  cancelTimers: function() {
+
+  cancelTimers() {
     each(this._throttlers, this._boundClearItems);
     this._throttlers = [];
 
@@ -531,13 +553,16 @@ Backburner.prototype = {
       this._platform.clearTimeout(this._autorun);
       this._autorun = null;
     }
-  },
+  }
 
-  hasTimers: function() {
+
+  hasTimers() {
     return !!this._timers.length || !!this._debouncees.length || !!this._throttlers.length || this._autorun;
-  },
+  }
 
-  cancel: function (timer) {
+
+
+  cancel(timer) {
     var timerType = typeof timer;
 
     if (timer && timerType === 'object' && timer.queue && timer.method) { // we're cancelling a deferOnce
@@ -558,9 +583,54 @@ Backburner.prototype = {
     } else {
       return; // timer was null or not a timer
     }
-  },
+  }
 
-  _cancelItem: function(findMethod, array, timer){
+
+
+  /*
+   Trigger an event. Supports up to two arguments. Designed around
+   triggering transition events from one run loop instance to the
+   next, which requires an argument for the first instance and then
+   an argument for the next instance.
+
+   @private
+   @method _trigger
+   @param {String} eventName
+   @param {any} arg1
+   @param {any} arg2
+  */
+  private _trigger(eventName, arg1, arg2) {
+    var callbacks = this._eventCallbacks[eventName];
+    if (callbacks) {
+      for (var i = 0; i < callbacks.length; i++) {
+        callbacks[i](arg1, arg2);
+      }
+    }
+  }
+
+
+  private _setTimeout(fn, executeAt) {
+    if (this._timers.length === 0) {
+      this._timers.push(executeAt, fn);
+      this._installTimerTimeout();
+      return fn;
+    }
+
+    // find position to insert
+    var i = searchTimer(executeAt, this._timers);
+
+    this._timers.splice(i, 0, executeAt, fn);
+
+    // we should be the new earliest timer if i == 0
+    if (i === 0) {
+      this._reinstallTimerTimeout();
+    }
+
+    return fn;
+  }
+
+
+  private _cancelItem(findMethod, array, timer) {
     var item, index;
 
     if (timer.length < 3) { return false; }
@@ -579,14 +649,16 @@ Backburner.prototype = {
     }
 
     return false;
-  },
+  }
 
-  _runExpiredTimers: function () {
+
+  private _runExpiredTimers() {
     this._timerTimeoutId = undefined;
     this.run(this, this._scheduleExpiredTimers);
-  },
+  }
 
-  _scheduleExpiredTimers: function () {
+
+  private _scheduleExpiredTimers() {
     var n = now();
     var timers = this._timers;
     var i = 0;
@@ -602,22 +674,27 @@ Backburner.prototype = {
     }
     timers.splice(0, i);
     this._installTimerTimeout();
-  },
+  }
 
-  _reinstallTimerTimeout: function () {
+
+  private _reinstallTimerTimeout() {
     this._clearTimerTimeout();
     this._installTimerTimeout();
-  },
+  }
 
-  _clearTimerTimeout: function () {
+
+
+  private _clearTimerTimeout() {
     if (!this._timerTimeoutId) {
       return;
     }
     this._platform.clearTimeout(this._timerTimeoutId);
     this._timerTimeoutId = undefined;
-  },
+  }
 
-  _installTimerTimeout: function () {
+
+
+  private _installTimerTimeout() {
     if (!this._timers.length) {
       return;
     }
@@ -626,13 +703,28 @@ Backburner.prototype = {
     var wait = Math.max(0, minExpiresAt - n);
     this._timerTimeoutId = this._platform.setTimeout(this._boundRunExpiredTimers, wait);
   }
-};
 
-Backburner.prototype.schedule = Backburner.prototype.defer;
-Backburner.prototype.scheduleOnce = Backburner.prototype.deferOnce;
-Backburner.prototype.later = Backburner.prototype.setTimeout;
+}
 
-function getOnError(options) {
+
+// TODO 3.3.2017 
+// Continue adding types
+// adding in legacy API support 
+
+/* TODO!!! LEGACY API SUPPORT
+=============================================*/	
+// Backburner.prototype.schedule = Backburner.prototype.defer;
+// Backburner.prototype.scheduleOnce = Backburner.prototype.deferOnce;
+// Backburner.prototype.later = Backburner.prototype.setTimeout;
+
+
+
+
+
+/* HELPERS
+=============================================*/	
+
+function getOnError(options: IBackburnerOptions) {
   return options.onError || (options.onErrorTarget && options.onErrorTarget[options.onErrorMethod]);
 }
 
