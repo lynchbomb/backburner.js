@@ -187,9 +187,9 @@ export default class Backburner {
   }
 
 
-  run() {
+  run(...args) {
     var length = arguments.length;
-    var method, target, args;
+    var method, target, args: any[];
 
     if (length === 1) {
       method = arguments[0];
